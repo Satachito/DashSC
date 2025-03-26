@@ -2,8 +2,9 @@
 
 ## Overview  
 DashSC is a **smart contract development platform** which interacts with a **Node.js backend** to:  
-✅ Compile Solidity smart contracts using `solc`  
-And intaract with wallet( Metamask, Coinbase, etc...) to:
+✅ Compile Solidity smart contracts using `solc`
+
+And intaract with wallet( Metamask, Coinbase, etc...) to:  
 ✅ Deploy contracts to the blockchain  
 ✅ Interact with deployed contracts by interpreting the ABI  
 
