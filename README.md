@@ -30,7 +30,7 @@ npm install
 Run the Node.js server to handle compilation and deployment:  
 
 ```sh
-node server.js
+node main.js
 ```
 
 ### 2. Open the Frontend  
