@@ -1,0 +1,160 @@
+<link
+	href="https://fonts.googleapis.com/icon?family=Material+Icons"
+	rel="stylesheet"
+>
+
+<link
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+	rel="stylesheet"
+>
+
+<style>
+	body	{	font-family	: monospace		}
+
+	h2 {	;	display		: inline
+			;	font-size	: 1.3rem
+			;	font-weight	: bold
+	}
+	h3 {	;	display		: inline
+			;	font-size	: 1.15rem
+			;	font-weight	: bold
+	}
+	h4 {	;	display		: inline
+			;	font-size	: 1rem
+			;	font-weight	: bold
+	}
+	h5 {	;	display		: inline
+			;	font-size	: 0.85rem
+			;	font-weight	: bold
+	}
+	h6 {	;	display		: inline
+			;	font-size	: 0.7rem
+			;	font-weight	: bold
+	}
+
+	.w100	{	width		: 100%			}
+	.flex	{	display		: flex			}
+	.fg1	{	flex-grow	: 1				}
+	.sV		{	height		: 1rem			}
+	.sVH	{	height		: 0.5rem		}
+	.sVQ	{	height		: 0.25rem		}
+	.sH		{	width		: 1rem			}
+	.sHH	{	width		: 0.5rem		}
+	.sHQ	{	width		: 0.25rem		}
+
+</style>
+
+
+<title>Dash SC</title>
+
+<wallet-selector		id=WALLET_S		></wallet-selector>
+<hr>
+<h1>CONTRACT SOURCES</h1>
+<button is=spin-button	id=Q_DEBUG		>DEBUG	</button>
+<input disabled			id=Q_FILE_NAME	>
+<button is=spin-button	id=Q_LOAD		>LOAD	</button>
+<button is=spin-button	id=Q_SAVE		>SAVE	</button>
+<button is=spin-button	id=Q_EXPORT		>EXPORT	</button>
+<file-importer			id=Q_IMPORT		>IMPORT	</file-importer>
+<hr>
+<div					id=Q_SOURCES	></div>
+<button					id=Q_ADD		>+ source</button>
+
+<script type=module>
+
+import WalletSelector	from './WalletSelector.js'
+import SOL_Source		from './SOL_Source.js'
+
+import {
+	Alert
+,	E
+,	Rs
+,	AC
+,	ACE
+,	On
+,	Export
+,	Load
+,	Save
+} from './JP.js'
+
+import {
+//	SpinButton
+} from './App.js'
+
+////////////////////////////////////////////////////////////////	CONTEXT
+
+const
+ContextJSON = () => JSON.stringify( 
+	Array.from( Q_SOURCES.children ).map( _ => _.Context() )
+)
+
+////////////////////////////////////////////////////////////////	REACTIONS
+const
+DeleteButton = onclick => {
+	const $ = E( 'button' )
+	$.style.fontSize = '0.5rem'
+	$.innerText = '❌'
+	$.onclick = onclick
+	return $
+}
+
+const
+SourceE = _ => {
+	const $ = new SOL_Source( _ )
+	AC( $, DeleteButton( () => Q_SOURCES.removeChild( $ ) ) )
+	ACE( $, 'hr' )
+	return $
+}
+
+Q_ADD.onclick = () => On(
+	prompt( 'Name: ' )
+,	name => AC( Q_SOURCES, SourceE( [ name, [ '', [] ] ] ) )
+)
+
+const
+Sync = _ => Rs( Q_SOURCES, ..._.map( _ => SourceE( _ ) ) )
+
+Q_LOAD.CreatePromise = async () => On( await Load(), _ => Sync( JSON.parse( _ ) ) )
+Q_SAVE.CreatePromise = async () => await Save(
+	ContextJSON()
+,	[	{	description	: 'DashSC Description file'
+		,	accept		: { 'application/json': [ '.dsc' ] } 
+		}
+	]
+)
+
+Q_EXPORT.CreatePromise = () => Export( ContextJSON(), 'DashSC.dsc', 'application/json' )
+
+Q_IMPORT.Callback = _ => Sync( JSON.parse( _ ) )
+
+////////////////////////////////////////////////////////////////	SAMPLE
+Q_DEBUG.CreatePromise = async () => alert( 'DEBUG IS NOT IMPLEMENTED' )
+/*
+const
+JPFS = url => fetch( url ).then( _ => _.text() ).then(
+	source => [
+		url
+	,	[	source
+		,	[]		//	Contracts
+		]
+	]
+)
+Q_DEBUG.CreatePromise = () => Promise.all(
+	[	JPFS( 'CasinoToken.sol' )
+	,	JPFS( 'Casino.sol' )
+	]
+).then( Sync ).catch( Alert )
+Q_DEBUG.CreatePromise = () => JPFS( 'CasinoAll.sol' ).then( _ => Sync( [ _ ] ) ).catch( Alert )
+*/
+
+////////////////////////////////////////////////////////////////	LOAD / BEFORE UNLOAD
+onload = () => Sync(
+	JSON.parse( localStorage.getItem( 'CONTRACTS' ) ?? '[]' )
+)
+onbeforeunload = () => localStorage.setItem(
+	'CONTRACTS'
+,	ContextJSON()
+)
+
+</script>
+
