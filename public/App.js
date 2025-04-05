@@ -1,14 +1,14 @@
 import {
 	JPSpinner
-,	JPSpinButton
+,	JPOverlayButton
 } from './JP.js'
 
 export class
-SpinButton extends JPSpinButton {
+SpinButton extends JPOverlayButton {
 	constructor() {
 		super()
 
-		this.CreateSpinner = () => {
+		this.CreateOverlay = () => {
 			const
 			$ = new JPSpinner()
 			$.style.boxSizing		= 'border-box'

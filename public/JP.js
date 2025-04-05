@@ -12,72 +12,93 @@ export const AC		= ( $, _ ) => $.appendChild( _ )
 export const ACE	= ( $, _ ) => AC( $, E( _ ) )
 export const On		= ( $, _ ) => $ && _( $ )
 
-export const
-Export = ( _, path, type ) => {
-	const
-	a = E( 'a' )
-	a.href = URL.createObjectURL( 
-		new Blob( [ _ ], { type } )
-	)
-	a.download = path
-	a.click()
-	URL.revokeObjectURL( a.href )
-}
-
-let
-FILE_PATH = ''
+////////////////////////////////////////////////////////////////
 
 export const
-Load = () => window.showOpenFilePicker().then(
-	_ => (
-		FILE_PATH = _[ 0 ].name
-	,	_[ 0 ].getFile().then( _ => _.text() )
+ReadAsText = _ => ( //	_ : <input type=file>
+	_.disabled = true
+,	Promise.all(
+		Array.from( _.files ).map(
+			_ => new Promise(
+				( S, J ) => {
+					const
+					$ = new FileReader()
+					$.onload = () => S( $.result )
+					$.onerror = () => J( $.error )
+					$.readAsText( _ )
+				}
+			)
+		)
+	).catch( Alert ).finally(
+		() => _.disabled = false
 	)
+)
+
+//	SAMPLE
+//	INPUT_FILE.onchange = ev => ReadAsText( ev.currentTarget ).then( console.log )
+
+////////////////////////////////////////////////////////////////
+
+export const
+Load = options => window.showOpenFilePicker( options ).then(
+	_ => Promise.all( _.map( _ => _.getFile() ) )
 ).catch(
 	e => e.name === 'AbortError' ? console.log( e ) : Alert( e )
 )
 
 export const
-Save = ( text, types = [] ) => window.showSaveFilePicker(
-	{	suggestedName:	FILE_PATH
-	,	types
-	}
-).then(
-	_ => _.createWritable().then(
-		$ => $.write( text ).then(
-			_ => $.close()
+LoadText = _ => Load( _ ).then( _ => Promise.all( _.map( _ => _.text() ) ) )
+
+export const
+LoadJSON = _ => LoadText( _ ).then( _ => Promise.all( _.map( _ => JSON.parse( _ ) ) ) )
+
+export const
+Save = ( _, options ) => window.showSaveFilePicker( options ).then(
+	handle => handle.createWritable().then(
+		writable => writable.write( _ ).then(
+			() => writable.close()
 		)
 	)
 ).catch(
 	e => e.name === 'AbortError' ? console.log( e ) : Alert( e )
 )
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-export class
-FileImporter extends HTMLElement {
-	constructor() {
-		super()
-		this.innerHTML = `<button>Choose file</button><input type=file style="display: none">`
-		const
-		fileSelector = this.querySelector( 'input' )
-		fileSelector.onchange = () => {
-			const
-			file = fileSelector.files[ 0 ]
-			if ( ! file ) return
-			this.querySelector( 'button' ).textContent = file.name
-			const
-			$ = new FileReader()
-			$.onload = () => this.Callback( $.result )
-			$.onerror = console.error
-			$.readAsText( file )
-		}
-		this.querySelector( 'button' ).onclick = () => fileSelector.click()
-	}
-}
-customElements.define( 'file-importer', FileImporter )
+export const
+SaveJSON = ( _, options ) => Save( JSON.stringify( _ ), options )
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	SAMPLE
+//
+//	let
+//	DSC = []
+//	
+//	const
+//	TYPES = [
+//		{	description : 'DashSC Description file'
+//		,	accept		: { 'application/json': [ '.dsc' ] }
+//		}
+//	]
+//
+//	BUTTON_LOAD.onclick = () => LoadJSON(
+//		{	multiple				: true
+//		,	types					: TYPES
+//		,	excludeAcceptAllOption	: true
+//		}
+//	).then(
+//		_ => DSC = _[ 0 ]
+//	)
+//	
+//	BUTTON_SAVE.onclick = () => SaveJSON(
+//		DSC
+//	,	{	types					: TYPES
+//		,	excludeAcceptAllOption	: true
+//		}
+//	)
+
+
+////////////////////////////////////////////////////////////////
 //	URLが存在しない場合 fetch 自体が TypeError( 'TypeError', 'Failed to fetch' ) を throw してくる
+//	これらを　catch したら、FetchAlertを呼ぼう
+
 export const
 FetchJSON = ( _, options = {} ) => fetch( _, options ).then(
 	_ => {
@@ -108,19 +129,19 @@ FetchArrayBuffer = ( _, options = {} ) => fetch( _, options ).then(
 )
 
 export const
-FetchImageURL = ( _, options = {} ) => fetchBLOB( _, options ).then(
+FetchImageURL = ( _, options = {} ) => FetchBLOB( _, options ).then(
 	_ => URL.createObjectURL( _ )
 )
 
 export const
-FetchDOM = ( _, options = {} ) => fetchText( _, options ).then(
-	_ => DOMParser().parseFromString( _, "text/html" )
+FetchDOM = ( _, options = {} ) => FetchText( _, options ).then(
+	_ => new DOMParser().parseFromString( _, "text/html" )
 )
 
 export const
 FetchAlert = _ => (
-	( _ instanceof Error	) && alert( _ )
-,	( _ instanceof Response	) && alert( `${ _.status }: ${ _.statusText }` )
+	( _ instanceof Error	) && Alert( _ )
+,	( _ instanceof Response	) && Alert( `${ _.status }: ${ _.statusText }` )
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,13 +150,10 @@ JPSpinner extends HTMLElement {
 	constructor() {
 		super()
 
+		this.style.display = 'inline-block'
+		this.style.animation = 'spin 2s linear infinite'
 		this.attachShadow( { mode: 'open' } ).innerHTML = `
 			<style>
-				:host {
-				;	display		: inline-block
-				;	animation	: spin 2s linear infinite
-				;	overflow	: hidden
-				}
 				@keyframes spin {
 					from	{ transform: rotate( 0deg	) }
 					to		{ transform: rotate( 360deg	) }
@@ -163,7 +181,7 @@ JPButton extends HTMLButtonElement {
 customElements.define( 'jp-button', JPButton, { extends: 'button' } )
 
 export class
-JPSpinButton extends HTMLButtonElement {
+JPOverlayButton extends HTMLButtonElement {
 
 	constructor() {
 		super()
@@ -174,16 +192,15 @@ JPSpinButton extends HTMLButtonElement {
 		this.style.position			= 'relative'
 
 		this.onclick = () => On(
-			this.CreateSpinner()
-		,	spinner => (
+			this.CreateOverlay()
+		,	overlay => (
 				this.disabled = true
-			,	spinner.style.position		= 'absolute'
-			,	spinner.style.height		= '100%'
-			,	spinner.style.aspectRatio	= '1 / 1'
-			,	this.appendChild( spinner )
+			,	overlay.style.position		= 'absolute'
+			,	overlay.style.height		= '100%'
+			,	this.appendChild( overlay )
 			,	this.CreatePromise().finally(
 					() => (
-						this.removeChild( spinner )
+						this.removeChild( overlay )
 					,	this.disabled = false
 					)
 				)
@@ -191,23 +208,23 @@ JPSpinButton extends HTMLButtonElement {
 		)
 	}
 }
-customElements.define( 'jp-spin-button', JPSpinButton, { extends: 'button' } )
-/*	JPSpinButton EXAMPLE
-class
-SpinButton extends JPSpinButton {
-	constructor() {
-		super()
+customElements.define( 'jp-overlay-button', JPOverlayButton, { extends: 'button' } )
 
-		this.CreateSpinner = () => {
-			const
-			$ = new JPSpinner()
-			$.style.boxSizing		= 'border-box'
-			$.style.border			= '5px solid black'
-			$.style.borderTop		= '5px solid transparent'
-			$.style.borderRadius	= '50%'
-			return $
-		}
-	}
-}
-customElements.define( 'spin-button', SpinButton, { extends: 'button' } )
-*/
+//	JPOverlayButton EXAMPLE
+//	class
+//	SpinButton extends JPOverlayButton {
+//		constructor() {
+//			super()
+//	
+//			this.CreateOverlay = () => {
+//				const
+//				$ = new JPSpinner()
+//				$.style.boxSizing		= 'border-box'
+//				$.style.border			= '5px solid black'
+//				$.style.borderTop		= '5px solid transparent'
+//				$.style.borderRadius	= '50%'
+//				return $
+//			}
+//		}
+//	}
+//	customElements.define( 'spin-button', SpinButton, { extends: 'button' } )

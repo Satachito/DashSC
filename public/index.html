@@ -1,13 +1,3 @@
-<link
-	href="https://fonts.googleapis.com/icon?family=Material+Icons"
-	rel="stylesheet"
->
-
-<link
-	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-	rel="stylesheet"
->
-
 <style>
 	body	{	font-family	: monospace		}
 
@@ -50,12 +40,8 @@
 <wallet-selector		id=WALLET_S		></wallet-selector>
 <hr>
 <h1>CONTRACT SOURCES</h1>
-<button is=spin-button	id=Q_DEBUG		>DEBUG	</button>
-<input disabled			id=Q_FILE_NAME	>
-<button is=spin-button	id=Q_LOAD		>LOAD	</button>
-<button is=spin-button	id=Q_SAVE		>SAVE	</button>
-<button is=spin-button	id=Q_EXPORT		>EXPORT	</button>
-<file-importer			id=Q_IMPORT		>IMPORT	</file-importer>
+<button					id=Q_LOAD		>LOAD	</button>
+<button					id=Q_SAVE		>SAVE	</button>
 <hr>
 <div					id=Q_SOURCES	></div>
 <button					id=Q_ADD		>+ source</button>
@@ -72,14 +58,9 @@ import {
 ,	AC
 ,	ACE
 ,	On
-,	Export
-,	Load
+,	LoadJSON
 ,	Save
 } from './JP.js'
-
-import {
-//	SpinButton
-} from './App.js'
 
 ////////////////////////////////////////////////////////////////	CONTEXT
 
@@ -114,7 +95,17 @@ Q_ADD.onclick = () => On(
 const
 Sync = _ => Rs( Q_SOURCES, ..._.map( _ => SourceE( _ ) ) )
 
-Q_LOAD.CreatePromise = async () => On( await Load(), _ => Sync( JSON.parse( _ ) ) )
+Q_LOAD.CreatePromise = () => LoadAsJSON(
+	{	types: [
+			{	description	: 'DashSC Description file'
+			,	accept		: { 'application/json': [ '.dsc' ] } 
+			}
+		]
+	,	excludeAcceptAllOption	: true
+	}
+).then(
+	_ => Sync( _[ 0 ] )
+)
 Q_SAVE.CreatePromise = async () => await Save(
 	ContextJSON()
 ,	[	{	description	: 'DashSC Description file'
@@ -123,12 +114,9 @@ Q_SAVE.CreatePromise = async () => await Save(
 	]
 )
 
-Q_EXPORT.CreatePromise = () => Export( ContextJSON(), 'DashSC.dsc', 'application/json' )
-
-Q_IMPORT.Callback = _ => Sync( JSON.parse( _ ) )
-
 ////////////////////////////////////////////////////////////////	SAMPLE
-Q_DEBUG.CreatePromise = async () => alert( 'DEBUG IS NOT IMPLEMENTED' )
+Q_DEBUG.onclick = _ => Alert( 'DEBUG IS NOT IMPLEMENTED' )
+
 /*
 const
 JPFS = url => fetch( url ).then( _ => _.text() ).then(
