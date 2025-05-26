@@ -1,0 +1,3 @@
+[submodule "public/SAT"]
+	path = public/SAT
+	url = git@github.com:Satachito/SAT.git

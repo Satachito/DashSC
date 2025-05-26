@@ -3,11 +3,7 @@ import {
 ,	E
 ,	Rs
 ,	On
-}	from './JP.js'
-
-import {
-//	SpinButton
-} from './App.js'
+}	from './SAT/SAT.js'
 
 import { ethers } from 'https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.min.js'
 

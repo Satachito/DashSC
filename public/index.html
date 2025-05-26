@@ -40,8 +40,8 @@
 <wallet-selector		id=WALLET_S		></wallet-selector>
 <hr>
 <h1>CONTRACT SOURCES</h1>
-<button					id=Q_LOAD		>LOAD	</button>
-<button					id=Q_SAVE		>SAVE	</button>
+<button	is=spin-button	id=Q_LOAD		>LOAD</button>
+<button	is=spin-button	id=Q_SAVE		>SAVE</button>
 <hr>
 <div					id=Q_SOURCES	></div>
 <button					id=Q_ADD		>+ source</button>
@@ -60,7 +60,11 @@ import {
 ,	On
 ,	LoadJSON
 ,	Save
-} from './JP.js'
+} from './SAT/SAT.js'
+
+import {
+//	spin-button
+} from './App.js'
 
 ////////////////////////////////////////////////////////////////	CONTEXT
 
@@ -95,7 +99,7 @@ Q_ADD.onclick = () => On(
 const
 Sync = _ => Rs( Q_SOURCES, ..._.map( _ => SourceE( _ ) ) )
 
-Q_LOAD.CreatePromise = () => LoadAsJSON(
+Q_LOAD.CreatePromise = () => LoadJSON(
 	{	types: [
 			{	description	: 'DashSC Description file'
 			,	accept		: { 'application/json': [ '.dsc' ] } 
@@ -113,27 +117,6 @@ Q_SAVE.CreatePromise = async () => await Save(
 		}
 	]
 )
-
-////////////////////////////////////////////////////////////////	SAMPLE
-Q_DEBUG.onclick = _ => Alert( 'DEBUG IS NOT IMPLEMENTED' )
-
-/*
-const
-JPFS = url => fetch( url ).then( _ => _.text() ).then(
-	source => [
-		url
-	,	[	source
-		,	[]		//	Contracts
-		]
-	]
-)
-Q_DEBUG.CreatePromise = () => Promise.all(
-	[	JPFS( 'CasinoToken.sol' )
-	,	JPFS( 'Casino.sol' )
-	]
-).then( Sync ).catch( Alert )
-Q_DEBUG.CreatePromise = () => JPFS( 'CasinoAll.sol' ).then( _ => Sync( [ _ ] ) ).catch( Alert )
-*/
 
 ////////////////////////////////////////////////////////////////	LOAD / BEFORE UNLOAD
 onload = () => Sync(
