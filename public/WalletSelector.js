@@ -1,4 +1,4 @@
-import { Alert, AC, ACE } from './SAT/SAT.js'
+import { Alert, AC, ACE } from './SAT/Browser.js'
 
 import { ethers }	from 'https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.min.js'
 //	BrowserProvider

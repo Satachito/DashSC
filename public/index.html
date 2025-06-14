@@ -57,10 +57,9 @@ import {
 ,	Rs
 ,	AC
 ,	ACE
-,	On
-,	LoadJSON
-,	Save
-} from './SAT/SAT.js'
+,	LoadJSONable
+,	SaveJSONable
+} from './SAT/Browser.js'
 
 import {
 //	spin-button
@@ -69,9 +68,7 @@ import {
 ////////////////////////////////////////////////////////////////	CONTEXT
 
 const
-ContextJSON = () => JSON.stringify( 
-	Array.from( Q_SOURCES.children ).map( _ => _.Context() )
-)
+Context = () => [ ...Q_SOURCES.children ].map( _ => _.Context() )
 
 ////////////////////////////////////////////////////////////////	REACTIONS
 const
@@ -91,15 +88,19 @@ SourceE = _ => {
 	return $
 }
 
-Q_ADD.onclick = () => On(
-	prompt( 'Name: ' )
-,	name => AC( Q_SOURCES, SourceE( [ name, [ '', [] ] ] ) )
-)
+
+Q_ADD.onclick = () => {
+	const
+	name = prompt( 'Contract name: ' )
+	if ( name === null ) return				//	Canceled
+	name.endsWith( '.sol' ) || ( name += '.sol' )
+	AC(	Q_SOURCES, SourceE( [ name, [ '', [] ] ] ) )
+}
 
 const
 Sync = _ => Rs( Q_SOURCES, ..._.map( _ => SourceE( _ ) ) )
 
-Q_LOAD.CreatePromise = () => LoadJSON(
+Q_LOAD.CreatePromise = () => LoadJSONable(
 	{	types: [
 			{	description	: 'DashSC Description file'
 			,	accept		: { 'application/json': [ '.dsc' ] } 
@@ -110,8 +111,8 @@ Q_LOAD.CreatePromise = () => LoadJSON(
 ).then(
 	_ => Sync( _[ 0 ] )
 )
-Q_SAVE.CreatePromise = async () => await Save(
-	ContextJSON()
+Q_SAVE.CreatePromise = async () => SaveJSONable(
+	Context()
 ,	[	{	description	: 'DashSC Description file'
 		,	accept		: { 'application/json': [ '.dsc' ] } 
 		}

@@ -1,14 +1,14 @@
 import {
 	Spinner
 ,	OverlayButton
-} from './SAT/SAT.js'
+} from './SAT/Components.js'
 
 export class
 SpinButton extends OverlayButton {
 	constructor() {
 		super()
 
-		this.CreateOverlay = () => {
+		this.CreateOverlay = async () => {
 			const
 			$ = new Spinner()
 			$.style.height          = '100%'
