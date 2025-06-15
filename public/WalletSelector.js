@@ -41,9 +41,8 @@ WalletSelector extends HTMLElement {
 
 		if ( !ethereum ) alert( 'Please install a wallet' )
 
-		this.innerHTML = '<div></div><select></select>'
-		const WALLET_INFOS	= this.children[ 0 ]
-		const WALLET_SELECT	= this.children[ 1 ]
+		const WALLET_INFOS	= ACE( this, 'div' )
+		const WALLET_SELECT	= ACE( this, 'select' )
 
 		this.walletDetails = []
 		addEventListener(
@@ -72,6 +71,5 @@ WalletSelector extends HTMLElement {
 		ethereum.on( 'chainChanged'		, _ => console.log( 'Chain changed:'		, _ ) )
 	}
 }
-
 customElements.define( 'wallet-selector', WalletSelector )
 
