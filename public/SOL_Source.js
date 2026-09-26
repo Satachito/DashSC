@@ -9,25 +9,69 @@ import { ethers } from 'https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/eth
 const
 Signer = async () => await new ethers.BrowserProvider( WALLET_S.Provider() ).getSigner()
 
+////////////////////////////////////////////////////////////////	ARGUMENTS
+//	Converts the text of an input field into a value ethers can encode for `type`.
+//	Arrays and tuples are written as JSON, e.g. [1,2,3] or ["0xabc…",true].
+const
+ParseArg = ( type, text ) => {
+	if ( type.endsWith( ']' ) || type.startsWith( 'tuple' ) ) {
+		try {
+			return JSON.parse( text )
+		} catch ( e ) {
+			throw new Error( `Argument for ${type} must be JSON: ${text}` )
+		}
+	}
+	if ( type === 'bool' ) {
+		const $ = text.trim().toLowerCase()
+		if ( $ === 'true'	) return true
+		if ( $ === 'false'	) return false
+		throw new Error( `Argument for bool must be true or false: ${text}` )
+	}
+	return text
+}
+
+//	Constructor arguments are written either as a JSON array ( ["abc", 1, [2,3]] )
+//	or, for simple values, comma separated ( abc, 1 ).
+const
+ParseArgs = ( inputs, text ) => {
+	if ( !text.trim() ) return []
+	if ( text.trim().startsWith( '[' ) ) {
+		try {
+			const $ = JSON.parse( text )
+			if ( Array.isArray( $ ) ) return $
+		} catch ( e ) {}
+	}
+	return text.split( ',' ).map(
+		( _, i ) => inputs[ i ] ? ParseArg( inputs[ i ].type, _.trim() ) : _.trim()
+	)
+}
+
+const
+Format = _ => typeof _ === 'bigint'
+?	_.toString()
+:	typeof _ === 'object' && _ !== null
+	?	JSON.stringify( _, ( k, v ) => typeof v === 'bigint' ? v.toString() : v )
+	:	String( _ )
+
 ////////////////////////////////////////////////////////////////
 const
-Element = ( tag, html ) => {
+Element = ( tag, text ) => {
 	const $ = E( tag )
-	$.innerHTML = html
+	$.textContent = text
 	return $
 }
-const Div	= _ => Element( 'div'	, _ )
 const Span	= _ => Element( 'span'	, _ )
-const H3	= _ => Element( 'h3'	, _ )
-const H4	= _ => Element( 'h4'	, _ )
 const H5	= _ => Element( 'h5'	, _ )
 const H6	= _ => Element( 'h6'	, _ )
 
 class
 SCFunction extends HTMLElement {
-	constructor( { name, inputs, outputs, stateMutability, type }, Contract ) {
+	constructor( fragment, Contract ) {
 		super()
 		this.style.display = 'block'
+
+		const { name, inputs, outputs, stateMutability } = fragment
+		const isReadOnly = stateMutability === 'pure' || stateMutability === 'view'
 
 		const
 		InputW400px = disabled => {
@@ -38,29 +82,31 @@ SCFunction extends HTMLElement {
 		}
 
 		const
-		inputSection = stateMutability === 'payable'
-		?	[ [ InputW400px(), Span( ':Wei' ), E( 'br' ) ] ]
-		:	inputs.map(
-				( { internalType, name, type } ) => [
-					InputW400px( false )
-				,	Span( `:${name}(${type})` )
-				,	E( 'br' )
-				]
-			)
-		;
+		valueSection = stateMutability === 'payable'
+		?	[ InputW400px( false ), Span( ':value(Wei)' ), E( 'br' ) ]
+		:	[]
 
 		const
-		outputSection = outputs.map(
-			( { internalType, name, type } ) => [
-				InputW400px( true )
+		inputSection = inputs.map(
+			( { name, type } ) => [
+				InputW400px( false )
 			,	Span( `:${name}(${type})` )
 			,	E( 'br' )
 			]
 		)
 
 		const
-		execButton = document.createElement( 'button' )
-		execButton.setAttribute( 'is', 'spin-button' )
+		outputSection = outputs.map(
+			( { name, type } ) => [
+				InputW400px( true )
+			,	Span( `:${name}(${type})` )
+			,	E( 'br' )
+			]
+		)
+
+		//	A customized built-in must get `is` at creation time; setAttribute( 'is' ) does not upgrade it.
+		const
+		execButton = document.createElement( 'button', { is: 'spin-button' } )
 		execButton.textContent = 'exec'
 
 		const
@@ -68,61 +114,54 @@ SCFunction extends HTMLElement {
 
 		Rs(	this
 		,	E( 'br' )
-		,	H5( `${name}` )	, H6( `(${type}):` )	, E( 'br' )
-		,	...( inputSection.flat( 2 ) )
+		,	H5( name )	, H6( `(${stateMutability}):` )	, E( 'br' )
+		,	...valueSection
+		,	...( inputSection.flat() )
 		,	execButton
 		,	E( 'br' )
-		,	...( outputSection.flat( 2 ) )
+		,	...( outputSection.flat() )
 		,	E( 'br' )
 		,	infoSpan
 		)
 
+		//	Use the full signature so overloaded functions resolve correctly.
+		const signature = ethers.FunctionFragment.from( fragment ).format()
+
 		execButton.CreatePromise = async () => {
 			try {
 				infoSpan.textContent = ''
+				outputSection.forEach( _ => _[ 0 ].value = '' )
 
 				const
-				_ = await ( await Contract() )[ name ].call(
-					null
-				,	...(
-						stateMutability === 'payable'
-						?	[ { value: inputSection[ 0 ][ 0 ].value } ]
-						:	inputSection.map( _ => _[ 0 ].value )
-					)
-				)
+				args = inputSection.map( ( _, i ) => ParseArg( inputs[ i ].type, _[ 0 ].value ) )
 
-				outputSection.length 
-				?	outputSection[ 0 ][ 0 ].value = _
-				:	alert( _ )
-
-				stateMutability === 'pure' || stateMutability === 'view' || (
-					_.wait().then( _ => ( console.log( _ ), infoSpan.textContent = _.hash ) )	//	_.status ? true : false
-				)
-/*
-				const
-				_ = ( await Contract() )[ name ].call(
-					null
-				,	...(
-						stateMutability === 'payable'
-						?	[ { value: inputSection[ 0 ][ 0 ].value } ]
-						:	inputSection.map( _ => _[ 0 ].value )
-					)
+				valueSection.length && valueSection[ 0 ].value.trim() && args.push(
+					{ value: valueSection[ 0 ].value.trim() }
 				)
 
 				const
-				$ = await (
-					( stateMutability === 'pure' || stateMutability === 'view' )
-					?	_
-					:	_.then( _ => _.wait() ).then( _ => ( console.log( _ ), _.hash ) )	//	_.status ? true : false
-				)
+				method = ( await Contract() ).getFunction( signature )
 
-				outputSection.length 
-				?	outputSection[ 0 ][ 0 ].value = $
-				:	alert( $ )
-*/
+				if ( isReadOnly ) {
+					const
+					result = await method.staticCall( ...args )
+					const
+					values = outputs.length === 1 ? [ result ] : [ ...result ]
+					outputSection.length
+					?	outputSection.forEach( ( _, i ) => _[ 0 ].value = Format( values[ i ] ) )
+					:	infoSpan.textContent = Format( result )
+				} else {
+					const
+					tx = await method.send( ...args )
+					infoSpan.textContent = `Sent: ${tx.hash}`
+					const
+					receipt = await tx.wait()
+					console.log( receipt )
+					infoSpan.textContent = `${receipt.status ? 'Success' : 'Failed'}: ${receipt.hash}`
+				}
 			} catch ( e ) {
-				infoSpan.textContent = e
-				Alert( e )
+				infoSpan.textContent = e.shortMessage ?? e.message ?? e
+				e.code === 'ACTION_REJECTED' || Alert( e )
 			}
 		}
 	}
@@ -138,19 +177,20 @@ SmartContract extends HTMLElement {
 
 		this.style.display = 'block'
 
+		//	No values are interpolated here: they are set below via textContent / value.
 		this.innerHTML = `
-			<h3>${name}</h3>
+			<h3></h3>
 			<br>ABI:<br>
-			<textarea readonly class=w100>${abi}</textarea>
+			<textarea readonly class=w100></textarea>
 			<br>BIN:<br>
-			<textarea readonly class=w100>${bin}</textarea>
+			<textarea readonly class=w100></textarea>
 			<div class=sVH></div>
 			<div class=flex>
-				<input value="${args}"		placeholder=arguments	class=fg1>
+				<input placeholder=arguments	class=fg1>
 				<div class=sHQ></div>
 				<button is=spin-button>DEPLOY→</button>
 				<div class=sHQ></div>
-				<input value="${address}"	placeholder=address		class=fg1>
+				<input placeholder=address		class=fg1>
 			</div>
 			<hr>
 			<div class=sVH></div>
@@ -161,14 +201,30 @@ SmartContract extends HTMLElement {
 			<hr>
 		`
 
+		const [ ABI, BIN ] = this.querySelectorAll( 'textarea' )
 		const ARGS		= this.querySelector( 'input[ placeholder=arguments ]'	)
 		const ADDRESS	= this.querySelector( 'input[ placeholder=address ]'	)
 		const DEPLOY	= this.querySelector( 'button'							)
 		const FUNCTIONS	= this.querySelector( 'details' ).querySelector( 'div' )
 
+		this.querySelector( 'h3' ).textContent = name
+		ABI		.value = abi
+		BIN		.value = bin
+		ARGS	.value = args
+		ADDRESS	.value = address
+
+		const
+		abiJSON = JSON.parse( abi )
+
+		const
+		constructorInputs = abiJSON.find( _ => _.type === 'constructor' )?.inputs ?? []
+		ARGS.title = constructorInputs.length
+		?	`constructor( ${ constructorInputs.map( _ => `${_.type} ${_.name}` ).join( ', ' ) } )\nJSON array or comma separated`
+		:	'constructor()'
+
 		Rs(	FUNCTIONS
-		,	...JSON.parse( abi ).filter(
-				_ => _.type = 'function' && _.name && _.stateMutability
+		,	...abiJSON.filter(
+				_ => _.type === 'function'
 			).map(
 				_ => new SCFunction(
 					_
@@ -177,15 +233,18 @@ SmartContract extends HTMLElement {
 			)
 		)
 
-		DEPLOY.CreatePromise = async () => new ethers.ContractFactory( abi, bin, await Signer() ).deploy(
-			...( ARGS.value ? ARGS.value.split( ',' ) : [] )
-		).then(
-			contract => contract.waitForDeployment().then(
-				async _ => ADDRESS.value = await contract.getAddress()
-			)
-		).catch(
-			e => e.code == 'ACTION_REJECTED' || Alert( e )
-		)
+		DEPLOY.CreatePromise = async () => {
+			try {
+				const
+				contract = await new ethers.ContractFactory( abi, bin, await Signer() ).deploy(
+					...ParseArgs( constructorInputs, ARGS.value )
+				)
+				await contract.waitForDeployment()
+				ADDRESS.value = await contract.getAddress()
+			} catch ( e ) {
+				e.code === 'ACTION_REJECTED' || Alert( e )
+			}
+		}
 
 		this.Context = () => [
 			name
@@ -205,12 +264,13 @@ SOL_Source extends HTMLElement {
 	constructor( [ path, [ _source, _contracts ] ] = [ '', [ '', [] ] ] ) {
 		super()
 
+		//	No values are interpolated here: they are set below via value.
 		this.innerHTML = `
 			<details open>
-				<summary><input value=${path} style="font-size: 20px; font-weight: bold"></summary>
-				<textarea rows=10 class=w100>${_source}</textarea>
+				<summary><input style="font-size: 20px; font-weight: bold"></summary>
+				<textarea rows=10 class=w100></textarea>
 				<div class=sVQ></div>
-				<button spin-button class=w100>COMPILE↓</button>
+				<button is=spin-button class=w100>COMPILE↓</button>
 				<br>
 				<p style="margin-left: 1rem"></p>
 			</details>
@@ -220,8 +280,11 @@ SOL_Source extends HTMLElement {
 		const SOURCE	= this.querySelector( 'textarea'	)
 		const CONTRACTS	= this.querySelector( 'p'			)
 
+		PATH	.value = path
+		SOURCE	.value = _source
+
 		Rs( CONTRACTS, ..._contracts.map( _ => new SmartContract( _ ) ) )
-//
+
 		COMPILE.CreatePromise = async () => {
 			try {
 				const
@@ -243,29 +306,29 @@ SOL_Source extends HTMLElement {
 
 				if ( !_.ok ) {
 					console.error( _ )
-					alert( _.statusText )
+					alert( `${_.status}: ${_.statusText}` )
 					return
 				}
 
 				const
 				json = await _.json()
 
-				On(	json.errors
-				,	_ => (
-						console.error( _ )
-					,	alert( JSON.stringify( _[ 0 ] ) )
-					)
-				)
+				const
+				errors = ( json.errors ?? [] ).filter( _ => _.severity === 'error' )
+				;( json.errors ?? [] ).filter( _ => _.severity !== 'error' ).forEach( _ => console.warn( _.formattedMessage ) )
 
-				On(	json.contracts
-				,	_ => Rs(
-						CONTRACTS
-					,	...Object.entries( _[ PATH.value ] ).map(
-							_ => new SmartContract( [ _[ 0 ], JSON.stringify( _[ 1 ].abi ), _[ 1 ].evm.bytecode.object ] )
-						)
+				if ( errors.length ) {
+					console.error( errors )
+					alert( errors.map( _ => _.formattedMessage ).join( '\n' ) )
+					return
+				}
+
+				Rs(	CONTRACTS
+				,	...Object.entries( json.contracts?.[ PATH.value ] ?? {} ).map(
+						_ => new SmartContract( [ _[ 0 ], JSON.stringify( _[ 1 ].abi ), _[ 1 ].evm.bytecode.object ] )
 					)
 				)
-			} catch ( e ) {	
+			} catch ( e ) {
 				Alert( e )
 			}
 		}
@@ -284,4 +347,3 @@ SOL_Source extends HTMLElement {
 	}
 }
 customElements.define( 'sol-source', SOL_Source )
-

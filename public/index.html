@@ -1,3 +1,5 @@
+<!doctype html>
+<meta charset=utf-8>
 <style>
 	body	{	font-family	: monospace		}
 
@@ -57,7 +59,7 @@ import {
 ,	Rs
 ,	AC
 ,	ACE
-,	LoadJSONable
+,	Load
 ,	SaveJSONable
 } from './SAT/Browser.js'
 
@@ -90,7 +92,7 @@ SourceE = _ => {
 
 
 Q_ADD.onclick = () => {
-	const
+	let
 	name = prompt( 'Contract name: ' )
 	if ( name === null ) return				//	Canceled
 	name.endsWith( '.sol' ) || ( name += '.sol' )
@@ -100,32 +102,40 @@ Q_ADD.onclick = () => {
 const
 Sync = _ => Rs( Q_SOURCES, ..._.map( _ => SourceE( _ ) ) )
 
-Q_LOAD.CreatePromise = () => LoadJSONable(
-	{	types: [
-			{	description	: 'DashSC Description file'
-			,	accept		: { 'application/json': [ '.dsc' ] } 
-			}
-		]
+const
+DSC_TYPES = [
+	{	description	: 'DashSC Description file'
+	,	accept		: { 'application/json': [ '.dsc' ] }
+	}
+]
+
+//	Load() resolves to undefined when the picker is canceled.
+Q_LOAD.CreatePromise = () => Load(
+	{	types					: DSC_TYPES
 	,	excludeAcceptAllOption	: true
 	}
 ).then(
-	_ => Sync( _[ 0 ] )
-)
-Q_SAVE.CreatePromise = async () => SaveJSONable(
+	files => files && files[ 0 ].text().then( _ => Sync( JSON.parse( _ ) ) )
+).catch( Alert )
+
+Q_SAVE.CreatePromise = () => SaveJSONable(
 	Context()
-,	[	{	description	: 'DashSC Description file'
-		,	accept		: { 'application/json': [ '.dsc' ] } 
-		}
-	]
-)
+,	{	types		: DSC_TYPES
+	,	suggestedName	: 'contracts.dsc'
+	}
+).catch( Alert )
 
 ////////////////////////////////////////////////////////////////	LOAD / BEFORE UNLOAD
-onload = () => Sync(
-	JSON.parse( localStorage.getItem( 'CONTRACTS' ) ?? '[]' )
-)
+onload = () => {
+	try {
+		Sync( JSON.parse( localStorage.getItem( 'CONTRACTS' ) ?? '[]' ) )
+	} catch ( e ) {
+		Alert( e )
+	}
+}
 onbeforeunload = () => localStorage.setItem(
 	'CONTRACTS'
-,	ContextJSON()
+,	JSON.stringify( Context() )
 )
 
 </script>

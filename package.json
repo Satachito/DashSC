@@ -1,7 +1,18 @@
 {
+  "name": "dashsc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web-based Solidity compile / deploy / interact dashboard",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@openzeppelin/contracts": "^5.2.0",
-    "@satachito/jp-split": "^1.0.7",
     "express": "^4.21.2",
     "solc": "^0.8.28"
   }
