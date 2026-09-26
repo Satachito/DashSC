@@ -59,7 +59,7 @@ import {
 ,	Rs
 ,	AC
 ,	ACE
-,	Load
+,	LoadJSONable
 ,	SaveJSONable
 } from './SAT/Browser.js'
 
@@ -109,13 +109,13 @@ DSC_TYPES = [
 	}
 ]
 
-//	Load() resolves to undefined when the picker is canceled.
-Q_LOAD.CreatePromise = () => Load(
+//	LoadJSONable() resolves to undefined when the picker is canceled.
+Q_LOAD.CreatePromise = () => LoadJSONable(
 	{	types					: DSC_TYPES
 	,	excludeAcceptAllOption	: true
 	}
 ).then(
-	files => files && files[ 0 ].text().then( _ => Sync( JSON.parse( _ ) ) )
+	_ => _ && Sync( _[ 0 ] )
 ).catch( Alert )
 
 Q_SAVE.CreatePromise = () => SaveJSONable(
